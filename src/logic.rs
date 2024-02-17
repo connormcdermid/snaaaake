@@ -151,7 +151,6 @@ pub fn get_move(game: &Game, turn: &i32, board: &Board, you: &Battlesnake) -> Va
     for snake in opponents {
         check_snake(you, snake, &mut is_move_safe);
     }
-    /* 
 
     // Are there any safe moves left?
     let safe_moves = is_move_safe
@@ -159,6 +158,8 @@ pub fn get_move(game: &Game, turn: &i32, board: &Board, you: &Battlesnake) -> Va
         .filter(|&(_, v)| v)
         .map(|(k, _)| k)
         .collect::<Vec<_>>();
+
+    /*
     
     let good_moves = safe_moves.clone();
 
@@ -177,7 +178,9 @@ pub fn get_move(game: &Game, turn: &i32, board: &Board, you: &Battlesnake) -> Va
 
     possible_foods = board.food;
 
-*/
+    */
+
+
 
     // Choose a random move from the safe ones
     let chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap_or_else(|| {panic!("width: {}, height: {}, head_x: {}, head_y: {}",
