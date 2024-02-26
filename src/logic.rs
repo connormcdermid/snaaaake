@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use pathfinding::prelude::astar;
 
 use crate::{Battlesnake, Board, Game};
+use crate::Coord;
 
 // info is called when you create your Battlesnake on play.battlesnake.com
 // and controls your Battlesnake's appearance
@@ -27,9 +28,9 @@ pub fn info() -> Value {
     return json!({
         "apiversion": "1",
         "author": "", // TODO: Your Battlesnake Username
-        "color": "#888888", // TODO: Choose color
-        "head": "default", // TODO: Choose head
-        "tail": "default", // TODO: Choose tail
+        "color": "#ffd700", // TODO: Choose color
+        "head": "all-seeing", // TODO: Choose head
+        "tail": "cosmic-horror", // TODO: Choose tail
     });
 }
 
@@ -59,13 +60,17 @@ pub fn check_snake(you: &Battlesnake, opp: &Battlesnake, map: &mut HashMap<&str,
         if cell.x == my_head.x - 1  && cell.y == my_head.y {
             //body is directly to left of head
             map.insert("left", false);
+            print!("snake body at left!");
         } else if cell.x == my_head.x + 1 && cell.y == my_head.y {
             map.insert("right", false); //body directly to right of head
+            print!("snake body at right!");
         }
         if cell.y == my_head.y - 1 && cell.x == my_head.x {
             map.insert("down", false);
+            print!("snake body down!");
         } else if cell.y == my_head.y + 1 && cell.x == my_head.x {
             map.insert("up", false);
+            print!("snake body up!");
         }
     }
 }
@@ -90,15 +95,19 @@ pub fn get_move(game: &Game, turn: &i32, board: &Board, you: &Battlesnake) -> Va
     
     if my_neck.x < my_head.x { // Neck is left of head, don't move left
         is_move_safe.insert("left", false);
+        print!("neck left!");
 
     } else if my_neck.x > my_head.x { // Neck is right of head, don't move right
         is_move_safe.insert("right", false);
+        print!("neck right!");
 
     } else if my_neck.y < my_head.y { // Neck is below head, don't move down
         is_move_safe.insert("down", false);
+        print!("neck down!");
     
     } else if my_neck.y > my_head.y { // Neck is above head, don't move up
         is_move_safe.insert("up", false);
+        print!("neck up!");
     }
 
     // TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
@@ -108,18 +117,22 @@ pub fn get_move(game: &Game, turn: &i32, board: &Board, you: &Battlesnake) -> Va
     let board_height = board.height;
     if my_head.x == 0 {
         is_move_safe.insert("left", false);
+        print!("wall left!");
     }
 
     if my_head.x == board_height - 1 {
         is_move_safe.insert("right", false);
+        print!("wall right!");
     }
 
     if my_head.y == 0 {
         is_move_safe.insert("down", false);
+        print!("wall down!");
     }
 
     if my_head.y == board_height - 1 {
         is_move_safe.insert("up", false);
+        print!("wall up!");
     }
 
 
@@ -159,28 +172,59 @@ pub fn get_move(game: &Game, turn: &i32, board: &Board, you: &Battlesnake) -> Va
         .map(|(k, _)| k)
         .collect::<Vec<_>>();
 
-    /*
-    
-    let good_moves = safe_moves.clone();
-
-    let food = (board.food[0].x, board.food[0].y);
-
     impl Coord {
         fn distance(&self, other: &Coord) -> u32 {
             (self.x.abs_diff(other.x) + self.y.abs_diff(other.y)) as u32
         }
 
         fn successors(&self) -> Vec<(Coord, u32)> {
-            let &Coord(x, y) = self;
-            vec![Coord(x+1, y), Coord(x-1, y), Coord(x, y+1), Coord(x, y-1)].into_iter().map(|p|, (p, 1)).collect()
+            let &Coord{x, y} = self;
+            vec![Coord{x: x+1, y}, Coord{x: x-1, y}, Coord{x, y: y+1}, Coord{x, y: y-1}].into_iter().map(|p| (p, 1)).collect()
         }
     }
 
-    possible_foods = board.food;
+    let possible_foods = board.food.clone();
 
-    */
+    let mut solns = Vec::<u32>::new();
 
+    let mut tuvec = Vec::<(Vec<Coord>, u32)>::new();
 
+    for food in possible_foods {
+        tuvec.push(astar(&Coord{x: my_head.x, y: my_head.y}, |p| p.successors(), |p| p.distance(&food), |p| *p == food).expect("no path found!"));
+        solns.push(tuvec.last().expect("never get here").1);
+        print!("astar coords: {}, {}\n", tuvec.last().expect("no path!").0[0].x, tuvec.last().expect("no path!").0[0].y);
+    }
+    let mut lowestval = u32::MAX;
+    let mut iter = 0;
+    let mut path = 0;
+    for res in solns {
+        let val = res;
+        if (val < lowestval) {
+            lowestval = val;
+            path = iter;
+        }
+        iter = iter + 1;
+    }
+
+    let mut best_move: &str = "";
+
+    // extract good moves
+    if tuvec[path].0[1].x == my_head.x - 1 {
+        best_move = "left";
+    } else if tuvec[path].0[1].x == my_head.x + 1 {
+        best_move = "right";
+    } else  if tuvec[path].0[1].y == my_head.y - 1 {
+        best_move = "down";
+    } else if tuvec[path].0[1].y == my_head.y + 1 {
+        best_move = "up";
+    }
+
+    for &mov in &safe_moves {
+        if mov == best_move {
+            info!("MOVE {}: {}", turn, best_move);
+            return json!({ "move": best_move });
+        }
+    }
 
     // Choose a random move from the safe ones
     let chosen = safe_moves.choose(&mut rand::thread_rng()).unwrap_or_else(|| {panic!("width: {}, height: {}, head_x: {}, head_y: {}",
